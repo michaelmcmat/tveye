@@ -93,7 +93,7 @@ jobs:
         if: steps.latest.outputs.skip == 'false'
         env:
           TVEYE_STORE_PASSWORD: ${{ secrets.TVEYE_STORE_PASSWORD }}
-          TVEYE_KEY_ALIAS: ${{ secrets.TVEYE_KEY_ALIAS }}
+          TVEYE_KEY_ALIAS: tveye   # not secret; as a secret it would mask the word in every log line
           TVEYE_KEY_PASSWORD: ${{ secrets.TVEYE_KEY_PASSWORD }}
           GV: ${{ steps.latest.outputs.gv }}
         run: |
@@ -119,8 +119,9 @@ jobs:
           unzip -l "$apk" | grep -q 'assets/extensions/ubol/_locales/en/messages.json'
           # signed with the key of the app on the TV
           bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          cert=$("$bt/apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
-          [ "$cert" = "$EXPECTED_CERT_SHA256" ] || { echo "unexpected signing certificate: $cert"; exit 1; }
+          out=$("$bt/apksigner" verify --print-certs "$apk" 2>&1)
+          cert=$(grep -oE 'certificate SHA-256 digest: [0-9a-f]{64}' <<<"$out" | head -1 | awk '{print $NF}')
+          [ "$cert" = "$EXPECTED_CERT_SHA256" ] || { echo "unexpected signing certificate: '$cert'"; echo "$out"; exit 1; }
           cp "$apk" "tveye-$CODE.apk"
 
       - name: Publish release

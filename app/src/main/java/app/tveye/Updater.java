@@ -122,6 +122,9 @@ final class Updater {
                 verifyArchive(apk, r.versionCode);
                 main.post(() -> cb.onReady(apk));
             } catch (Exception e) {
+                android.util.Log.w("tveye", "update rejected: " + e);
+                // The release we knew may be gone or replaced: ask GitHub again next time instead of trusting the cache.
+                prefs.edit().remove("update_check").remove("u_code").apply();
                 main.post(() -> cb.onError(e.getMessage() == null ? e.toString() : e.getMessage()));
             }
         }, "tveye-update-download").start();
@@ -147,18 +150,24 @@ final class Updater {
     @SuppressWarnings("deprecation")
     private void verifyArchive(File apk, int expectedCode) throws Exception {
         PackageManager pm = ctx.getPackageManager();
-        int flag = Build.VERSION.SDK_INT >= 28 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
-        PackageInfo theirs = pm.getPackageArchiveInfo(apk.getPath(), flag);
-        PackageInfo ours = pm.getPackageInfo(ctx.getPackageName(), flag);
+        // Ask for both: Android 9 leaves signingInfo empty for an APK that is not installed yet.
+        int flags = PackageManager.GET_SIGNATURES | (Build.VERSION.SDK_INT >= 28 ? PackageManager.GET_SIGNING_CERTIFICATES : 0);
+        PackageInfo theirs = pm.getPackageArchiveInfo(apk.getPath(), flags);
+        PackageInfo ours = pm.getPackageInfo(ctx.getPackageName(), flags);
         if (theirs == null) throw new Exception("not an APK");
-        if (!ctx.getPackageName().equals(theirs.packageName)) throw new Exception("wrong package");
+        if (!ctx.getPackageName().equals(theirs.packageName)) throw new Exception("wrong package " + theirs.packageName);
         if (theirs.versionCode < expectedCode || theirs.versionCode <= BuildConfig.VERSION_CODE) throw new Exception("not newer");
-        if (!Arrays.equals(signers(theirs), signers(ours))) throw new Exception("signature differs");
+        Signature[] a = signers(theirs), b = signers(ours);
+        if (a == null || a.length == 0) throw new Exception("APK carries no readable signature");
+        if (!Arrays.equals(a, b)) throw new Exception("signature differs");
     }
 
     @SuppressWarnings("deprecation")
     private static Signature[] signers(PackageInfo p) {
-        if (Build.VERSION.SDK_INT >= 28 && p.signingInfo != null) return p.signingInfo.getApkContentsSigners();
+        if (Build.VERSION.SDK_INT >= 28 && p.signingInfo != null) {
+            Signature[] s = p.signingInfo.getApkContentsSigners();
+            if (s != null && s.length > 0) return s;
+        }
         return p.signatures;
     }
 

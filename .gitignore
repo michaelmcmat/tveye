@@ -1,0 +1,11 @@
+.gradle/
+build/
+app/build/
+local.properties
+*.jks
+*.keystore
+signing.properties
+*.apk
+# screenshots from the TV: search queries, accounts, region
+shots/
+shots-*.png

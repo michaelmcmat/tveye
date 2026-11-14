@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <LinearLayout
+        android:id="@+id/content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:background="#FF0E0F12"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
+
+            <ImageButton android:id="@+id/btn_home" style="@style/ToolButton" android:src="@drawable/ic_home" android:contentDescription="Домой" />
+            <ImageButton android:id="@+id/btn_back" style="@style/ToolButton" android:src="@drawable/ic_back" android:contentDescription="Назад" />
+            <ImageButton android:id="@+id/btn_reload" style="@style/ToolButton" android:src="@drawable/ic_reload" android:contentDescription="Обновить" />
+
+            <EditText
+                android:id="@+id/url"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:layout_weight="1"
+                android:background="@drawable/field_bg"
+                android:hint="@string/search_hint"
+                android:imeOptions="actionGo|flagNoExtractUi"
+                android:importantForAutofill="no"
+                android:inputType="textUri"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:selectAllOnFocus="true"
+                android:singleLine="true"
+                android:textColor="#FFFFFFFF"
+                android:textColorHint="#80FFFFFF"
+                android:textSize="17sp" />
+
+            <ImageButton android:id="@+id/btn_star" style="@style/ToolButton" android:src="@drawable/ic_star_border" android:contentDescription="Закладка" />
+            <ImageButton android:id="@+id/btn_shield" style="@style/ToolButton" android:src="@drawable/ic_shield" android:contentDescription="Блокировка рекламы" />
+            <ImageButton android:id="@+id/btn_mode" style="@style/ToolButton" android:src="@drawable/ic_desktop" android:contentDescription="Версия сайта" />
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/progress"
+            style="@android:style/Widget.Material.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:max="100"
+            android:progressTint="#FFFFFFFF"
+            android:progressBackgroundTint="#00000000"
+            android:visibility="invisible" />
+
+        <FrameLayout
+            android:id="@+id/page"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <org.mozilla.geckoview.GeckoView
+                android:id="@+id/gecko"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
+
+            <ScrollView
+                android:id="@+id/start"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/black"
+                android:fillViewport="true"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:paddingTop="56dp"
+                    android:paddingBottom="48dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-thin"
+                        android:letterSpacing="0.08"
+                        android:text="@string/app_name"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="64sp" />
+
+                    <EditText
+                        android:id="@+id/search"
+                        android:layout_width="640dp"
+                        android:layout_height="60dp"
+                        android:layout_marginTop="28dp"
+                        android:background="@drawable/field_bg"
+                        android:hint="@string/search_hint"
+                        android:imeOptions="actionSearch|flagNoExtractUi"
+                        android:importantForAutofill="no"
+                        android:inputType="text"
+                        android:paddingStart="28dp"
+                        android:paddingEnd="28dp"
+                        android:singleLine="true"
+                        android:textColor="#FFFFFFFF"
+                        android:textColorHint="#80FFFFFF"
+                        android:textSize="21sp" />
+
+                    <TextView
+                        android:id="@+id/update_banner"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="24dp"
+                        android:background="@drawable/tile_bg"
+                        android:paddingStart="24dp"
+                        android:paddingTop="12dp"
+                        android:paddingEnd="24dp"
+                        android:paddingBottom="12dp"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="17sp"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/bookmarks_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="40dp"
+                        android:letterSpacing="0.12"
+                        android:text="@string/bookmarks"
+                        android:textAllCaps="true"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="13sp" />
+
+                    <GridLayout
+                        android:id="@+id/bookmarks"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:columnCount="4" />
+
+                    <TextView
+                        android:id="@+id/no_bookmarks"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:text="@string/no_bookmarks"
+                        android:textColor="#66FFFFFF"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/version"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="48dp"
+                        android:textColor="#40FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </ScrollView>
+        </FrameLayout>
+    </LinearLayout>
+
+    <app.tveye.CursorView
+        android:id="@+id/cursor"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="false"
+        android:focusable="false" />
+</FrameLayout>

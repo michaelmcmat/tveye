@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 320x180 TV banner: a plain white eye on graphite. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path android:fillColor="#FF16181D" android:pathData="M0,0h320v180h-320z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFF2F2F2"
+        android:strokeWidth="7"
+        android:strokeLineJoin="round"
+        android:pathData="M96,90 C128,48 192,48 224,90 C192,132 128,132 96,90 Z" />
+    <path android:fillColor="#FFF2F2F2" android:pathData="M138,90 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0 z" />
+    <path android:fillColor="#FF16181D" android:pathData="M150,82 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 z" />
+</vector>

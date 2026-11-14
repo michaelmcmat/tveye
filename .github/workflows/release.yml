@@ -1,0 +1,135 @@
+name: Build and release tveye
+
+# Weekly: if Mozilla published a newer GeckoView (the Firefox engine) or a newer uBlock Origin Lite is out
+# (and at least 3 days old), build tveye, verify it and publish a release. tveye on the TV checks this
+# repository's latest release and offers the update; Android installs it only if it carries the same signature.
+on:
+  schedule:
+    - cron: "23 3 * * 1"   # Mondays 03:23 UTC
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "gradle/**"
+      - "*.gradle.kts"
+      - "gradle.properties"
+      - ".github/workflows/release.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # SHA-256 of the signing certificate every release must carry: the key of the app installed on the TV.
+      EXPECTED_CERT_SHA256: "8c723a51fa99b3815a7d87ddfc1aab39c0fb25c70edf5f4e223fe3a2390f43c2"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Java 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad  # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Newest GeckoView and uBlock Origin Lite
+        id: latest
+        run: |
+          set -euo pipefail
+          gv=$(curl -fsSL https://maven.mozilla.org/maven2/org/mozilla/geckoview/geckoview-armeabi-v7a/maven-metadata.xml \
+               | sed -n 's:.*<release>\(.*\)</release>.*:\1:p')
+          # newest non-prerelease uBO Lite that has been public for at least 3 days
+          ub=$(gh api 'repos/uBlockOrigin/uBOL-home/releases?per_page=20' \
+               --jq '[.[] | select(.prerelease | not) | select((now - (.published_at | fromdateiso8601)) > 259200)][0].tag_name')
+          [ -n "$gv" ] && [ -n "$ub" ] && [ "$ub" != "null" ]
+          prev=$(gh release view --repo "$GITHUB_REPOSITORY" --json body --jq .body 2>/dev/null || true)
+          skip=false
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] && grep -qx "geckoview=$gv" <<<"$prev" && grep -qx "ubol=$ub" <<<"$prev"; then
+            skip=true
+          fi
+          { echo "gv=$gv"; echo "ub=$ub"; echo "skip=$skip"; } >> "$GITHUB_OUTPUT"
+          echo "GeckoView $gv · uBO Lite $ub · skip=$skip"
+
+      - name: Fetch uBlock Origin Lite
+        if: steps.latest.outputs.skip == 'false'
+        env:
+          UB: ${{ steps.latest.outputs.ub }}
+        run: |
+          set -euo pipefail
+          name="uBOLite_${UB}.firefox.signed.xpi"
+          digest=$(gh api "repos/uBlockOrigin/uBOL-home/releases/tags/$UB" --jq ".assets[] | select(.name==\"$name\") | .digest")
+          case "$digest" in sha256:*) ;; *) echo "no published digest for $name"; exit 1 ;; esac
+          curl -fsSL -o app/ublock/ubol.firefox.signed.xpi "https://github.com/uBlockOrigin/uBOL-home/releases/download/$UB/$name"
+          echo "${digest#sha256:}  app/ublock/ubol.firefox.signed.xpi" | sha256sum -c -
+          unzip -l app/ublock/ubol.firefox.signed.xpi | grep -q 'META-INF/mozilla.rsa'   # signed by Mozilla
+          echo "uBO Lite $UB $digest" > app/ublock/VERSION
+
+      - name: Android SDK platform 37.2
+        if: steps.latest.outputs.skip == 'false'
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.2" "build-tools;36.0.0" > /dev/null
+
+      - name: Signing key
+        if: steps.latest.outputs.skip == 'false'
+        env:
+          KEYSTORE_B64: ${{ secrets.TVEYE_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          [ -n "$KEYSTORE_B64" ] || { echo "secret TVEYE_KEYSTORE_B64 is missing"; exit 1; }
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/tveye.jks"
+          echo "TVEYE_KEYSTORE=$RUNNER_TEMP/tveye.jks" >> "$GITHUB_ENV"
+
+      - name: Build
+        if: steps.latest.outputs.skip == 'false'
+        env:
+          TVEYE_STORE_PASSWORD: ${{ secrets.TVEYE_STORE_PASSWORD }}
+          TVEYE_KEY_ALIAS: ${{ secrets.TVEYE_KEY_ALIAS }}
+          TVEYE_KEY_PASSWORD: ${{ secrets.TVEYE_KEY_PASSWORD }}
+          GV: ${{ steps.latest.outputs.gv }}
+        run: |
+          set -euo pipefail
+          code=$((1000 + GITHUB_RUN_NUMBER))
+          echo "CODE=$code" >> "$GITHUB_ENV"
+          ./gradlew --no-daemon assembleRelease \
+            -PgeckoviewVersion="$GV" -PtveyeVersionCode="$code" -PtveyeUpdateRepo="$GITHUB_REPOSITORY"
+
+      - name: Verify engine, blocker and signature
+        if: steps.latest.outputs.skip == 'false'
+        env:
+          GV: ${{ steps.latest.outputs.gv }}
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/release/app-release.apk
+          # GeckoView exactly as Mozilla published it
+          aar=$(find ~/.gradle/caches -name "geckoview-armeabi-v7a-$GV.aar" | head -1)
+          want=$(curl -fsSL "https://maven.mozilla.org/maven2/org/mozilla/geckoview/geckoview-armeabi-v7a/$GV/geckoview-armeabi-v7a-$GV.aar.sha256" | cut -d' ' -f1)
+          echo "$want  $aar" | sha256sum -c -
+          # the blocker, with the _locales Gecko needs to accept it
+          unzip -l "$apk" | grep -q 'assets/extensions/ubol/manifest.json'
+          unzip -l "$apk" | grep -q 'assets/extensions/ubol/_locales/en/messages.json'
+          # signed with the key of the app on the TV
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          cert=$("$bt/apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          [ "$cert" = "$EXPECTED_CERT_SHA256" ] || { echo "unexpected signing certificate: $cert"; exit 1; }
+          cp "$apk" "tveye-$CODE.apk"
+
+      - name: Publish release
+        if: steps.latest.outputs.skip == 'false'
+        env:
+          GV: ${{ steps.latest.outputs.gv }}
+          UB: ${{ steps.latest.outputs.ub }}
+        run: |
+          set -euo pipefail
+          notes=$(printf 'geckoview=%s\nubol=%s\n' "$GV" "$UB")
+          gh release create "v$CODE" "tveye-$CODE.apk" --repo "$GITHUB_REPOSITORY" \
+            --title "tveye $CODE · Gecko ${GV%%.*} · uBO Lite $UB" --notes "$notes"

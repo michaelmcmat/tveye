@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">tveye</string>
+    <string name="search_hint">Поиск Google или адрес сайта</string>
+    <string name="bookmarks">Закладки</string>
+    <string name="no_bookmarks">Чтобы добавить закладку, откройте сайт и нажмите ☆ вверху</string>
+    <string name="popup_blocked">Всплывающее окно заблокировано</string>
+    <string name="redirect_blocked">Сайт пытался сам перейти на %1$s — заблокировано</string>
+    <string name="download_blocked">Скачивание файлов в tveye отключено</string>
+    <string name="scheme_blocked">Переход в другое приложение заблокирован</string>
+    <string name="bookmark_added">Добавлено в закладки</string>
+    <string name="bookmark_removed">Убрано из закладок</string>
+    <string name="mode_desktop">Версия для компьютера</string>
+    <string name="mode_mobile">Мобильная версия</string>
+    <string name="update_available">Доступно обновление %1$s — нажмите, чтобы установить</string>
+    <string name="update_downloading">Загружаю обновление…</string>
+    <string name="update_failed">Не удалось обновить: %1$s</string>
+    <string name="update_allow_install">Разрешите tveye устанавливать свои обновления и нажмите ещё раз</string>
+    <string name="engine_restarted">Страница перезапущена</string>
+    <string name="load_error">Не удалось открыть страницу</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Отмена</string>
+</resources>
